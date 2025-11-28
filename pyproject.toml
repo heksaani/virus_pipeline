@@ -1,0 +1,7 @@
+[project]
+name = "virus-piper"
+version = "0.1.0"
+description = "Viral sequencing data pipeline"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
