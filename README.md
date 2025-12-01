@@ -3,10 +3,16 @@
 Pipeline for viral sequencing data
 
 ```mermaid
-    nextseq-->fastq;
-    A-->C;
-    B-->D;
-    C-->D;
+  graph TD;
+      minION--> barcode.fastq;
+      nextSeq-->R1.fastq1,R2.fastq;
+      Miseq-->R1.fastq1,R2.fastq;
+      barcode.fastq-->combine;
+      combine-->IRMA;
+      R1.fastq1,R2.fastq-->IRMA;
+      IRMA-->seqments_to_folders.py;
+      seqments_to_folders.py-->IRMA_analysis_with_reads.py;
+      IRMA_analysis_with_reads.py-->Infl_GISAID_naming.py
 ```
 
 ## IRMA
