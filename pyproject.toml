@@ -4,4 +4,9 @@ version = "0.1.0"
 description = "Viral sequencing data pipeline"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "pandas>=2.3.3",
+    "pyinotify>=0.9.6",
+    "ruff>=0.14.7",
+    "watchdog>=6.0.0",
+]
