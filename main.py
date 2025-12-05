@@ -15,7 +15,7 @@ logging.basicConfig(
     )
 
 def main():
-    logging.info('Starting script...')
+    logging.info('Starting main script...')
     os.umask(0) # THIS PREVENTS FOLDERS TO BE CREATED WITH NOT ALL PERMISSIONS
     # umask(0) sets the file mode creation mask to 0, allowing all permissions for newly created files and directories.
     path = config.DATA_PATH

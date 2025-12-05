@@ -30,3 +30,32 @@ docker run --rm -it \
     irma_thl \
     IRMA FLU sample_R1_001.fastq.gz sample_R2_001.fastq.gz ./sample1
 ```
+
+## Pipeline setup:
+
+Currently the config file should have at minimum:
+
+```python 
+
+DATA_PATH = '/path/to/data'
+RESULTS_PATH = DATA_PATH + '/results'
+```
+Currently the platform detection uses the DATA_PATH and folders in there named after platform used for example:
+
+```bash
+
+DATA_PATH
+|
+|---minion 
+
+```
+
+## Using the pipeline 
+
+The watcher script is strated by using main.py
+```bash
+source .venv/bin/activate
+python main.py
+# or 
+uv run main.py
+```
