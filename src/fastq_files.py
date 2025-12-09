@@ -1,10 +1,9 @@
 """"Script that handle fastq files for virus piper."""
 import re
-import glob
 import logging
 
 def extract_barcode(filename:str, pattern:str=r'barcode\d+') -> str | None:
-    """Extracts the barcode from a given filename based on a pattern using regex.
+    """Function that extracts the barcode from a given filename. 
 
     Args:
         filename (str): The name of the file.
@@ -35,12 +34,29 @@ def get_sample_name(input_path:str):
     sample_name = filename.split('_')[0]
     return sample_name 
 
+def check_platform(input_path:str) -> str | None:
+    """Function that checks the sequencing platform from the file path
+
+    Args:
+        input_path (str) : Path to the fastq file
+    Returns:
+        platform (str) : Sequencing platform (minion, nextseq, miseq) or None if not found
+    """
+    platform = input_path.split('/')[5]
+    if platform not in ['minion', 'nextseq','miseq']:
+        logging.error(f"Invalid platform detected {platform}")
+        return None
+    return platform
+
+
 def combine_minion_reads(input_path:str):
     """Function that combines all fastqs into one for one minion barcode
 
     Args:
         path (str) : Path to the folder with fastq files 
     
+    Returns: 
+        output_path (str) : Path to the combined fastq file
     """
-    pass  # Implementation goes here
+    pass
 
