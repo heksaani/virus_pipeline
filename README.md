@@ -47,7 +47,8 @@ Currently the platform detection uses the DATA_PATH and folders in there named a
 DATA_PATH
 |
 |---minion 
-
+|---nextseq 
+|---miseq
 ```
 
 ## Using the pipeline 
