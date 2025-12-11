@@ -42,12 +42,22 @@ def check_platform(input_path:str) -> str | None:
     Returns:
         platform (str) : Sequencing platform (minion, nextseq, miseq) or None if not found
     """
-    platform = input_path.split('/')[5]
+    platform = input_path.split('/')[5] # migth be problematic if the path structure changes
     if platform not in ['minion', 'nextseq','miseq']:
         logging.error(f"Invalid platform detected {platform}")
         return None
     return platform
 
+def get_species(input_path:str) -> str:
+    """Function that checks the species from the file path
+
+    Args:
+        input_path (str) : Path to the fastq file
+    Returns:
+        species (str) : Species (influenza) or None if not found
+    """
+    species = input_path.split('/')[4] # migth be problematic if the path structure changes
+    return species
 
 def combine_minion_reads(input_path:str):
     """Function that combines all fastqs into one for one minion barcode

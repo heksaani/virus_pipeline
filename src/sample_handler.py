@@ -1,5 +1,5 @@
 import logging
-from .fastq_files import extract_barcode, get_sample_name, check_platform
+from .fastq_files import extract_barcode, get_sample_name, check_platform, get_species
 from .pipeline_launcher import PipelineLauncher
 
 class SampleHandler:
@@ -14,7 +14,7 @@ class SampleHandler:
             path_str (str) : Path to the fastq file
         """
         if sample_name not in self.sample_reads:
-            logging.warning("Sample not found in dict adding")
+            logging.info("Sample not found in dict adding")
             self.sample_reads[sample_name] = {'R1': None, 'R2': None}
         if 'R1' in path_str:
             self.sample_reads[sample_name]['R1'] = path_str
@@ -44,11 +44,11 @@ class SampleHandler:
                 logging.info(f"Sample {sample_name} ")
                 self._add_reads_to_sample(sample_name, filepath)
                 try:
-                    reads = self.sample_reads[sample_name]
+                    reads = self.sample_reads[sample_name] # this is dictionary with R1 and R2 paths
                     if reads['R1'] and reads['R2']:
                         logging.info(f"Both reads found for sample {sample_name}, launching pipeline.")
-                        self.pipeline_launcher.launch(platform, sample_name, reads['R1'], reads['R2'])
-                        # Reset the sample reads after launching the pipeline
+                        species = get_species(filepath)
+                        self.pipeline_launcher.launch(platform, species, sample_name, reads)
                         del self.sample_reads[sample_name]
                         logging.info(f"Sample {sample_name} removed from sample_reads dictionary after launching pipeline.")
                 except KeyError:
