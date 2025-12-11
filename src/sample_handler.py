@@ -4,7 +4,7 @@ from .pipeline_launcher import PipelineLauncher
 
 class SampleHandler:
     def __init__(self, pipeline_launcher:PipelineLauncher):
-        self.pipeline_launcher = pipeline_launcher
+        self.pipeline_launcher = pipeline_launcher # this 
         self.sample_reads = {}
     def _add_reads_to_sample(self, sample_name:str, path_str:str):
         """Function that adds the read paths to the sample dictionary
