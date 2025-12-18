@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "pandas>=2.3.3",
     "pyinotify>=0.9.6",
+    "pytest>=9.0.2",
     "ruff>=0.14.7",
     "watchdog>=6.0.0",
 ]

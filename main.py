@@ -24,8 +24,8 @@ def main():
     if not os.path.isdir(path):
         print(f"Error: Path is not a directory: {path}")
         return
-    launcher = PipelineLauncher() # this creates the pipeline launcher object
-    sample_handler = SampleHandler(launcher) # this creates the sample handler object -> it needs the pipeline launcher to launch the pipeline when needed
+    launcher = PipelineLauncher()
+    sample_handler = SampleHandler(launcher)
     event_handler = DirectoryMonitor(callback=sample_handler.process_file)
 
     observer = Observer()
