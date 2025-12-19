@@ -1,6 +1,5 @@
 import logging
-import config
-from .fastq_files import extract_barcode, get_sample_name, get_species
+from .fastq_files import get_sample_name, get_species
 from .pipeline_launcher import PipelineLauncher
 from .species_pipelines import SpeciesPipelines
 class SampleHandler:
@@ -50,14 +49,14 @@ class SampleHandler:
             sample_name = get_sample_name(filepath)
             self._add_read_to_sample(sample_name, filepath)
             logging.info(self.sample_reads)
-            species_obj = SpeciesPipelines(self.sample_reads[sample_name]['species'])
+            species_obj = SpeciesPipelines(self.sample_reads[sample_name]['species'], sample_name, self.sample_reads)
             if species_obj.check_sample(sample_name, self.sample_reads):
-                logging.info(f'sample {sample_name} ready...')
-                #docker_cmd = species_obj.build_docker_command(sample_name, self.sample_reads[sample_name])
-                #self.pipeline_launcher.launch(docker_cmd)
+                logging.info(f'Sample {sample_name} ready...')
+                docker_cmd = species_obj.build_docker_command(sample_name, self.sample_reads[sample_name])
+                self.pipeline_launcher.launch(docker_cmd)
                 del self.sample_reads[sample_name]
             else:
-                logging.info(f'sample {sample_name} not ready')
+                logging.info(f'Sample {sample_name} not ready')
         else:
             logging.info(f"File is not a fastq.gz file: {filepath}")
             return
