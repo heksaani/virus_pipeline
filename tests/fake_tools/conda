@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""Fake `conda` for testing the pipeline without real tools.
+
+`conda env list` lists the envs from config.json. `conda run -n ENV TOOL ...`
+writes small, realistic-shaped outputs for fastqc, fastp, kraken2, IRMA,
+nextclade and multiqc. IRMA output: segment-named files in the sample root (A_HA_H3.fasta) and,
+in amended_consensus, files named by the lab's SEG_NUMBERS setting
+(<sample>_HA.fa, <sample>_A_PB1.fa, ... plus .pad.fa twins). Set
+FAKE_IRMA_NAMING=numbers for IRMA's stock numbering (<sample>_4.fa).
+"""
+import os
+import shutil
+import sys
+from pathlib import Path
+
+LOG = Path(os.environ.get("FAKE_CONDA_LOG", "/tmp/fake_conda_calls.log"))
+ENVS = ["qc", "kraken", "irma_env", "nextclade", "snippy", "nanoplot"]
+# Influenza A segment numbering used by IRMA
+SEG_NUM = {"PB2": 1, "PB1": 2, "PA": 3, "HA": 4, "NP": 5, "NA": 6, "MP": 7, "NS": 8}
+
+
+def opt(args, flag):
+    return args[args.index(flag) + 1] if flag in args else None
+
+
+def main():
+    argv = sys.argv[1:]
+    with LOG.open("a") as fh:
+        fh.write(" ".join(argv) + "\n")
+    if argv[:2] == ["env", "list"]:
+        print("# conda environments:\n#")
+        for e in ENVS:
+            print(f"{e}   /opt/conda/envs/{e}")
+        return 0
+    assert argv[0] == "run" and argv[1] == "-n", argv
+    tool, args = argv[3], argv[4:]
+
+    if tool == "fastqc":
+        out = Path(opt(args, "--outdir"))
+        for f in [a for a in args if a.endswith(".fastq.gz")]:
+            (out / (Path(f).name.replace(".fastq.gz", "_fastqc.zip"))).write_text("zip")
+    elif tool == "fastp":
+        shutil.copy(opt(args, "-i"), opt(args, "-o"))
+        if "-I" in args:
+            shutil.copy(opt(args, "-I"), opt(args, "-O"))
+        Path(opt(args, "--html")).write_text("<html/>")
+        Path(opt(args, "--json")).write_text("{}")
+    elif tool == "kraken2":
+        Path(opt(args, "--report")).write_text(
+            " 2.00\t20\t20\tU\t0\tunclassified\n"
+            "98.00\t980\t0\tR\t1\troot\n"
+            "95.00\t950\t900\tS1\t335341\t  Influenza A virus (A/Texas/50/2012(H3N2))\n"
+        )
+        Path(opt(args, "--output")).write_text("")
+    elif tool == "IRMA":
+        if os.environ.get("FAKE_IRMA_FAIL"):
+            print("FAKE IRMA: failing on purpose", file=sys.stderr)
+            return 1
+        positional = args[: args.index("--external-config")] if "--external-config" in args else args
+        module = positional[0]           # IRMA <module> <reads...> <outdir>
+        cfg = opt(args, "--external-config")
+        if cfg and not Path(cfg).exists():
+            print(f"FAKE IRMA: external config not found: {cfg}", file=sys.stderr)
+        out = Path(positional[-1])
+        sample = out.name
+        (out / "amended_consensus").mkdir(parents=True, exist_ok=True)
+        (out / "tables").mkdir(exist_ok=True)
+        if not module.startswith("FLU"):   # single-genome modules: CoV, RSV, ...
+            ref = {"CoV": "SARS-CoV-2", "RSV": "RSV_A"}.get(module.split("-")[0], module)
+            seq = "ACGT" * 200 + "NN"
+            (out / f"{ref}.fasta").write_text(f">{ref}\n{seq}\n")
+            (out / "amended_consensus" / f"{sample}.fa").write_text(f">{sample}\n{seq}\n")
+            (out / "amended_consensus" / f"{sample}.pad.fa").write_text(f">{sample}\n{'N' * 100}{seq}\n")
+            (out / "tables" / f"{ref}-allAlleles.txt").write_text(
+                "Reference_Name\tPosition\tAllele\tCount\tTotal\tFrequency\tAllele_Type\n"
+                "SARS-CoV-2\t1\tA\t99\t100\t0.99\tConsensus\n"
+                "SARS-CoV-2\t2\tC\t80\t100\t0.80\tConsensus\n"
+            )
+            (out / "tables" / f"{ref}-coverage.txt").write_text(
+                "Reference_Name\tPosition\tCoverage Depth\tConsensus\n"
+                "SARS-CoV-2\t1\t500\tA\nSARS-CoV-2\t2\t300\tC\n"
+            )
+            return 0
+        subtype = {"HA": "H3", "NA": "N2"}
+        numbered = os.environ.get("FAKE_IRMA_NAMING") == "numbers"
+        for seg, num in SEG_NUM.items():
+            if not numbered:
+                # lab SEG_NUMBERS: A_PB1:A_PB1, A_PB2:A_PB2, HA:HA, ...
+                num = f"A_{seg}" if seg in ("PB1", "PB2") else seg
+            suffix = f"_{subtype[seg]}" if seg in subtype else ""
+            seq = "ACGT" * 100 + "NNNN"
+            (out / f"A_{seg}{suffix}.fasta").write_text(f">A_{seg}{suffix}\n{seq}\n")
+            (out / "amended_consensus" / f"{sample}_{num}.fa").write_text(f">{sample}_{num}\n{seq}\n")
+            pad = "N" * 200 + seq + "N" * 200
+            (out / "amended_consensus" / f"{sample}_{num}.pad.fa").write_text(f">{sample}_{num}\n{pad}\n")
+            (out / "tables" / f"A_{seg}{suffix}-allAlleles.txt").write_text(
+                "Reference_Name\tPosition\tAllele\tCount\tTotal\tFrequency\tAverage_Quality\tConfidenceNotMacErr\tPairedUB\tQualityUB\tAllele_Type\n"
+                f"A_{seg}\t1\tA\t99\t100\t0.99\t35\t1\t0.1\t0.1\tConsensus\n"
+                f"A_{seg}\t2\tC\t90\t100\t0.90\t35\t1\t0.1\t0.1\tConsensus\n"
+            )
+            (out / "tables" / f"A_{seg}{suffix}-coverage.txt").write_text(
+                "Reference_Name\tPosition\tCoverage Depth\tConsensus\n"
+                f"A_{seg}\t1\t100\tA\nA_{seg}\t2\t200\tC\n"
+            )
+        (out / "tables" / "READ_COUNTS.txt").write_text(
+            "Record\tReads\tPatterns\tPairsAndWidows\n1-initial\t1000\t1\t1\n3-match\t900\t1\t1\n3-altmatch\t10\t1\t1\n"
+        )
+    elif tool == "nextclade":
+        out = Path(opt(args, "-O"))
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "nextclade.tsv").write_text(
+            "seqName\tclade\tcoverage\tsubstitutions\n"
+            "x\tJ.2\t0.99\tA12G,C34T;x\n"
+        )
+    elif tool == "snippy":
+        out = Path(opt(args, "--outdir"))
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "snps.tab").write_text("CHROM\tPOS\tTYPE\tREF\tALT\nMN908947.3\t241\tsnp\tC\tT\n")
+    elif tool == "NanoPlot":
+        out = Path(opt(args, "--outdir"))
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "NanoStats.txt").write_text("General summary:\nNumber of reads: 1\n")
+    elif tool == "multiqc":
+        pass
+    else:
+        print(f"FAKE CONDA: unknown tool {tool}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

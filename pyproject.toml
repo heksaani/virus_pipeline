@@ -1,0 +1,33 @@
+[project]
+name = "irma-pipe"
+version = "0.1.0"
+description = "Influenza and SARS-CoV-2 Illumina (NextSeq/MiSeq) pipeline around IRMA"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastaparser>=1.1.1",
+    # CHANGE (2026-10-06): pandas.read_excel() needs openpyxl for .xlsx and it
+    # was missing from the lock file. Without it the summary reports start
+    # from scratch every time (only the last sample survives) and GISAID
+    # naming raises for every sample.
+    "openpyxl>=3.1",
+    "pandas>=3.0.3",
+    "pytest>=9.1.1",
+    "watchdog>=6.0.0",
+    "xlsxwriter>=3.2.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.15.22",  # CHANGE (2026-10-06): moved from runtime deps; only needed for development
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+[tool.ruff.lint]
+extend-select = ["D", "DOC"]
+preview = true          # the DOC (missing Returns/Raises) rules are preview-only
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

@@ -1,0 +1,18 @@
+{
+    "fastp_conda_env": "qc",
+    "postproc_conda_env": "irma_postproc_env",
+    "qc_conda_env": "qc",
+    "kraken_conda_env": "kraken",
+    "kraken-db": "/mnt/volume/db/virusdb_kraken",
+    "snippy_conda_env": "snippy",
+    "nextclade_conda_env": "nextclade",
+    "archive_dir": "/mnt/volume/storage",
+    "logs_dir": "/mnt/volume/logs",
+    "sars-ref": "/mnt/volume/db/refs_snippy/MN908947.gbk",
+    "irma_conda_env":"irma_env",
+    "nextclade_ref":"/mnt/volume/db/nextclade/dataset",
+    "gisaid_naming_file":"/mnt/volume/irma_pipe2/file.xlsx",
+    "multiqc_conda_env":"qc",
+    "nextclade_ref_covid":"/mnt/volume/db/nextclade/dataset/sars-cov-2",
+    "max_parallel_samples": 2
+}
