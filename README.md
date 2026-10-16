@@ -193,7 +193,7 @@ the virtual environment's Python directly (not `uv run`), so the saved
 process ID is the watcher itself and `kill` reaches it:
 
 ```bash
-cd /mnt/volume/irma_pipe2
+cd /mnt/volume/irma_pipe
 deactivate 2>/dev/null          # leave any other activated venv
 uv sync                         # make sure .venv is up to date
 
