@@ -15,12 +15,11 @@ naming, and writes Excel/HTML summary reports.
 | | |
 |---|---|
 | [docs/configuration.md](docs/configuration.md) | Every `config.json` key, IRMA external configs, Nextclade datasets |
-| [docs/input-layout.md](docs/input-layout.md) | Input folders, sample naming, MinION runs |
-| [docs/outputs.md](docs/outputs.md) | Every result file, logs, reading the Nextclade TSVs |
-| [docs/irma-naming.md](docs/irma-naming.md) | How IRMA names consensus files and why `SEG_NUMBERS` is set twice |
-| [docs/adding-a-species.md](docs/adding-a-species.md) | Adding a virus (e.g. RSV) or a sequencer |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Tests, linting, code layout |
-| [CHANGELOG.md](CHANGELOG.md) | What changed and when |
+| [docs/input_layout.md](docs/input_layout.md) | Input folders, sample naming, MinION runs || [docs/outputs.md](docs/outputs.md) | Every result file, logs, reading the Nextclade TSVs |
+| [docs/irma-naming.md](docs/irma_naming.md) | How IRMA names consensus files and why `SEG_NUMBERS` is set twice |
+| [docs/adding-a-species.md](docs/adding_species.md) | Adding a virus (e.g. RSV) or a sequencer |
+| [CONTRIBUTING.md](./docs/contributing.md) | Tests, linting, code layout |
+| [CHANGELOG.md](docs/changelog.md) | What changed and when |
 | Gitea wiki | Running the watcher on the server, design decisions |
 
 ## Pipeline steps
