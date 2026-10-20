@@ -1,5 +1,6 @@
 """CHANGE (2026-10-06): NEW. process_sample() archiving / done-marker rules,
-with the workflow handler replaced by a stub so no tools are needed."""
+with the workflow handler replaced by a stub so no tools are needed.
+"""
 from argparse import Namespace
 from pathlib import Path
 

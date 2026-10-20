@@ -73,9 +73,12 @@ def _config(tmp_path: Path) -> Path:
 def _run(tmp_path: Path) -> list[str]:
     env = dict(os.environ, PATH=f"{FAKE_TOOLS}{os.pathsep}{os.environ['PATH']}",
                FAKE_CONDA_LOG=str(tmp_path / "conda_calls.log"))
+    # CHANGE (2026-10-20): check=False made explicit (ruff PLW1510); the
+    # assert below checks the exit code and shows the pipeline's stderr.
     proc = subprocess.run([sys.executable, str(REPO / "run_pipeline.py"), "-i", str(tmp_path / "input"),
                            "-o", str(tmp_path / "output"), "--config", str(_config(tmp_path)),
-                           "--max-workers", "1"], env=env, capture_output=True, text=True, timeout=300)
+                           "--max-workers", "1"],
+                          check=False, env=env, capture_output=True, text=True, timeout=300)
     assert proc.returncode == 0, proc.stderr
     return (tmp_path / "conda_calls.log").read_text().splitlines()
 

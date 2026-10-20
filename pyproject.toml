@@ -31,3 +31,8 @@ preview = true          # the DOC (missing Returns/Raises) rules are preview-onl
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# CHANGE (2026-10-20): test names already describe what they check, so the
+# docstring rules (D, DOC) only apply to the pipeline code, not tests/.
+"tests/**" = ["D", "DOC"]

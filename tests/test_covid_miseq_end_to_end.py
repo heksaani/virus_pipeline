@@ -1,5 +1,6 @@
 """End-to-end MiSeq COVID run with fake tools
-(see tests/fake_tools/conda): fastp -> Kraken2 -> IRMA CoV -> Snippy -> Nextclade."""
+(see tests/fake_tools/conda): fastp -> Kraken2 -> IRMA CoV -> Snippy -> Nextclade.
+"""
 import gzip
 import json
 import os
@@ -48,7 +49,7 @@ def test_miseq_covid_run(tmp_path: Path):
                FAKE_CONDA_LOG=str(tmp_path / "conda_calls.log"))
     proc = subprocess.run([sys.executable, str(REPO / "run_pipeline.py"), "-i", str(tmp_path / "input"),
                            "-o", str(tmp_path / "output"), "--config", str(tmp_path / "config.json"),
-                           "--max-workers", "1"], env=env, capture_output=True, text=True, timeout=300)
+                                                      "--max-workers", "1"], check=False, env=env, capture_output=True, text=True, timeout=300)
     assert proc.returncode == 0, proc.stderr
     run_dir = _results_dir(tmp_path)
 

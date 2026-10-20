@@ -1,5 +1,6 @@
 """The species registry, and adding a species
-without touching any workflow code."""
+without touching any workflow code.
+"""
 import gzip
 import json
 import os
@@ -45,7 +46,8 @@ def test_flu_external_config_keeps_lab_seg_numbers():
 def test_new_species_needs_only_a_registry_entry(tmp_path, monkeypatch):
     """Register an RSV-like species and run a MiSeq sample through the real
     pipeline (fake tools): routing, IRMA module, Nextclade, summary columns,
-    archiving and done marker all come from the registry entry."""
+    archiving and done marker all come from the registry entry.
+    """
     pytest.importorskip("fastaparser")
     pytest.importorskip("openpyxl")
     rsv = species.SpeciesDef(
