@@ -89,21 +89,29 @@ folder that exists on your server.
 ## Input layout
 
 ```
-<input_dir>/<influenza|covid>/<nextseq|miseq|minion>/<RUN_FOLDER>/...
+<input_dir>/<influenza|covid>/<nextseq|miseq|minion>/.../<sample>_R1.fastq.gz
 ```
 
-**Copy each sequencing run in as its own folder** – results are named after
-it. A MiSeq run can be copied in as-is:
+The first two folders tell the pipeline the species and sequencer. Below
+them, any layout works: copy one folder per sample, or just the FASTQs.
 
 ```
-input/influenza/miseq/261006_M01234_0042_000000000-ABCDE/Data/Intensities/BaseCalls/
-    26-040001_S1_L001_R1_001.fastq.gz
-    26-040001_S1_L001_R2_001.fastq.gz
-    Undetermined_S0_L001_R1_001.fastq.gz      <- skipped, left in place
+input/influenza/miseq/
+    26-040001/
+        26-040001_R1.fastq.gz
+        26-040001_R2.fastq.gz
+    26-040002_S2_L001_R1_001.fastq.gz         <- loose FASTQs work too
+    26-040002_S2_L001_R2_001.fastq.gz
 ```
 
-The sample name is the part before `_S<number>` (here `26-040001`) and must be
-a THL sample name (`YY-NNNNNN` or `YYYY-NNNN`) for GISAID naming.
+- **The sample name comes from the file name**, not the folder: the part
+  before `_S<number>` or `_R1`/`_R2` (here `26-040001`, `26-040002`). It must
+  be a THL sample name (`YY-NNNNNN` or `YYYY-NNNN`) for GISAID naming.
+- **File names must end in** `.fastq.gz`, `.fq.gz`, `.fastq` or `.fq`; a file
+  named `26-040001_R1.gz` is not found.
+- **Each sample name only once:** files with the same sample name anywhere
+  under the input folder are treated as one sample, even in different
+  folders.
 
 For MinION, copy the **finished** MinKNOW run folder under `<species>/minion/`;
 each `barcodeNN` folder is one sample. Details:
@@ -141,7 +149,7 @@ out, see *Running the watcher* in the Gitea wiki.
 
 | Situation | Raw FASTQs | Marked done |
 |---|---|---|
-| Sample completed (including "IRMA found no consensus") | moved to `archive_dir/<RUN_FOLDER>_RESULTS/<sample>/` | yes |
+| Sample completed (including "IRMA found no consensus") | moved to `archive_dir/RESULTS_<YYYYMMDD>/<sample>/` | yes |
 | Only R1 or R2 has arrived, or a file is still growing | left in place | no |
 | A required step failed (fastp, IRMA, missing conda env) | left in place | no |
 | Unexpected error | left in place, traceback in the log | no |
@@ -153,8 +161,12 @@ again (or let the watcher do it).
 
 ## Output
 
+Results go to a folder named after **the date the pipeline run started**.
+Everything processed that day shares it; a sample finished after midnight
+(e.g. its R2 arrived late) goes to the next day's folder.
+
 ```
-<results>/<RUN_FOLDER>_RESULTS/
+<results>/RESULTS_<YYYYMMDD>/
 ├── <sample>/                      # per-sample QC, Kraken2, IRMA (and Snippy) output
 ├── segments/<SEGMENT>/            # influenza consensus per segment
 ├── GISAIDfasta/                   # influenza, Illumina: GISAID submission files
@@ -165,7 +177,7 @@ again (or let the watcher do it).
 ```
 
 Logs: one `<logs_dir>/pipeline_<YYYYMMDD_HHMMSS>.log` per invocation, plus a
-`pipeline.log` per sample under `<logs_dir>/<RUN_FOLDER>_RESULTS/<sample>/`.
+`pipeline.log` per sample under `<logs_dir>/RESULTS_<YYYYMMDD>/<sample>/`.
 The Nextclade files are **tab**-separated. Full description:
 [docs/outputs.md](docs/outputs.md).
 
