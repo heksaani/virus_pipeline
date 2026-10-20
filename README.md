@@ -24,6 +24,35 @@ naming, and writes Excel/HTML summary reports.
 
 ## Pipeline steps
 
+```mermaid
+flowchart TD
+    IN["FASTQs in input/species/sequencer/"] --> READY{"Sample ready?"}
+    READY -->|"no: R1 or R2 missing, still copying,<br/>already done, Undetermined"| LEFT["Left in the input folder<br/>for the next run"]
+    READY -->|yes| PLAT{"Platform"}
+
+    PLAT -->|Illumina| FQC["FastQC"] --> FASTP["fastp trimming"] --> KRAKEN["Kraken2"]
+    PLAT -->|MinION| MERGE["Merge pass + fail reads"] --> NANO["NanoPlot"] --> KRAKEN
+
+    KRAKEN --> IRMA["IRMA assembly"]
+    FASTP -.->|fails| LEFT
+    IRMA -.->|fails| LEFT
+
+    IRMA --> SPEC{"Species"}
+    SPEC -->|Influenza| SEG["Segment FASTAs"] --> ANALYSIS["IRMA_analysis.xlsx"] --> GISAID["GISAID naming<br/>(Illumina only)"] --> NC["Nextclade<br/>(per segment for influenza)"]
+    SPEC -->|SARS-CoV-2| SNIPPY["Snippy<br/>(Illumina only)"] --> NC
+
+    NC --> SUMMARY["Row in sample_summary_report.xlsx"]
+    SUMMARY --> DONE["Archive raw FASTQs,<br/>write .IRMA_DONE"]
+    DONE -.->|after all samples| MQC["MultiQC report for the run"]
+
+    classDef required stroke-width:3px
+    class FASTP,IRMA required
+```
+
+Steps with a thick border are required: if they fail, the sample stops and
+its raw files stay in place. All other tools are optional and are skipped
+with a warning if their conda environment is not configured.
+
 1. **Checks** – files no longer growing; for Illumina, both R1 and R2 present.
 2. **Pre-processing**
    - Illumina: `FastQC` (raw reads), `fastp` (trimming), `Kraken2` (trimmed pairs).
@@ -61,7 +90,11 @@ for env_file in conda_envs/*.yml; do conda env create -f "$env_file"; done
 
 ## Configuration
 
-Copy `config.json` and edit the paths and conda environment names. The
+```bash
+cp config.example.json config.json
+```
+
+Then edit the paths and conda environment names in `config.json`. The
 minimum to run is:
 
 ```json
@@ -198,4 +231,4 @@ uv run pytest
 uv run ruff check .
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](docs/contributing.md).
