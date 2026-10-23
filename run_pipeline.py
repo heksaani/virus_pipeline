@@ -50,6 +50,23 @@ DEFAULT_LOGS_DIR = "/mnt/volume/logs"
 # MinKNOW's reads with no barcode. Skipped and left in place.
 SKIP_SAMPLE_NAMES = {"Undetermined", "unclassified"}
 
+def is_sample_folder(folder: Path, sample: str) -> bool:
+    """Check whether an input folder belongs to one sample only.
+
+    True for a folder named after the sample (``26-040001/``, MinION
+    ``barcode01/``) or starting with ``<sample>_`` (a BaseSpace download
+    folder such as ``26-040001_L001-ds.<id>/``). The ``_`` keeps
+    ``26-04000`` from matching ``26-040001_...``.
+
+    Args:
+        folder: Folder that held the sample's raw FASTQs.
+        sample: Sample name.
+
+    Returns:
+        ``True`` if the folder may be removed once it is empty.
+    """
+    return folder.name == sample or folder.name.startswith(f"{sample}_")
+
 
 def archive_sample_files(files_sorted: list[str], sample: str, archive_root: Path) -> None:
     """Move a sample's raw FASTQs to ``<archive_root>/<sample>/``.
@@ -57,7 +74,8 @@ def archive_sample_files(files_sorted: list[str], sample: str, archive_root: Pat
     MinION files go to ``<sample>/<fastq_pass|fastq_fail>/<file>``, because
     the pass and fail folders can hold files with the same name. Files that
     already exist at the destination are left in place with a warning. An
-    input folder named after the sample is removed once it is empty.
+    input folder of the sample (see ``is_sample_folder``) is removed once it
+    is empty.
 
     Args:
         files_sorted: The sample's raw FASTQ files.
@@ -79,7 +97,8 @@ def archive_sample_files(files_sorted: list[str], sample: str, archive_root: Pat
         logger.info("Moving %s to %s", src, dest)
         source_parent = src.parent
         src.rename(dest)
-        if source_parent.name == sample and source_parent.is_dir() and not any(source_parent.iterdir()):
+        
+        if is_sample_folder(source_parent, sample) and source_parent.is_dir() and not any(source_parent.iterdir()):
             logger.info("Removing empty sample folder %s", source_parent)
             source_parent.rmdir()
 
@@ -248,10 +267,10 @@ def setup_logging(log_file: Path, with_thread_names: bool) -> None:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse the command-line arguments.
- 
+
     Args:
         argv: Arguments to parse; ``None`` uses ``sys.argv``.
- 
+
     Returns:
         The parsed arguments.
     """

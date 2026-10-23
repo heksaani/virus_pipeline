@@ -1,8 +1,8 @@
 """Give influenza samples GISAID names and collect their GISAID submission files.
 
-A THL sample (``YY-NNNNNN`` or ``YYYY-NNNN``) with both an HA and an NA
-consensus gets a name such as ``A/Finland/140/2026_H3N2`` or
-``B/Finland/141/2026``. The running number comes from the central name list
+A THL sample (``YY-NNNNNN`` or ``YYYY-NNNN``, optionally ending in
+``VI``) with both an HA and an NA consensus gets a name such as
+``A/Finland/140/2026_H3N2`` or ``B/Finland/141/2026``. The running number comes from the central name list
 (``gisaid_naming_file`` in ``config.json``), which is shared by all runs and
 maps each THL sample name to its running number and GISAID name.
 
@@ -47,7 +47,10 @@ SUBMIT_COLUMNS = [
 
 # Only THL sample names are GISAID-named: YY-NNNNNN (e.g. 26-057848) or
 # YYYY-NNNN. Controls ("Neg-KO-IAV") and MinION barcodes are not.
-THL_SAMPLE_NAME = re.compile(r"^(\d{2}|\d{4})-\d+$")
+# a name may end in one of THL_SAMPLE_SUFFIXES Other trailing
+# letters ("26-057848b") are still not named.
+THL_SAMPLE_SUFFIXES = ("VI",)
+THL_SAMPLE_NAME = re.compile(rf"^(\d{{2}}|\d{{4}})-\d+(?:{'|'.join(THL_SAMPLE_SUFFIXES)})?$")
 
 
 def _has_digit(text: str) -> bool:
@@ -93,7 +96,8 @@ class Sample:
         """Set up a sample; call ``gisaidname()`` to name it.
 
         Args:
-            current_name: THL sample name, ``YY-NNNNNN`` or ``YYYY-NNNN``.
+            current_name: THL sample name, ``YY-NNNNNN`` or ``YYYY-NNNN``,
+                optionally with a suffix from ``THL_SAMPLE_SUFFIXES``.
             running_number: Running number for the GISAID name.
             sample_path: IRMA output folder of the sample.
         """
@@ -217,14 +221,50 @@ class Sample:
                 seq_ids[segment.name] = seq_id
 
         self.submitting_info = [
-            "", "", self.new_name.split("_")[0], self.subtype or "", "", "", "Finland", "", "", "", "human", "",
+            "", "", isolate_name(self.new_name), self.subtype or "", "", "", "Finland", "", "", "", "human", "",
             *seq_ids.values(),
         ]
         return fastas_to_submit
 
 
+def isolate_name(gisaid_name: str) -> str:
+    """Return the isolate part of a GISAID name, without the subtype.
+
+    Example: ``A/Finland/141/2026_H1N1pdm09`` -> ``A/Finland/141/2026``.
+
+    Args:
+        gisaid_name: Full GISAID name.
+
+    Returns:
+        The isolate name, as written in ``submit_info.xlsx``.
+    """
+    return gisaid_name.split("_", maxsplit=1)[0]
+
+
+def _without_isolates(fasta_entries: list[str], isolates: set[str]) -> list[str]:
+    """Drop the header/sequence pairs of the given isolates from ``fastas.xlsx`` entries.
+
+    Args:
+        fasta_entries: Alternating headers (``>A/Finland/141/2026_H1N1pdm09_HA``)
+            and sequences.
+        isolates: Isolate names whose entries are removed.
+
+    Returns:
+        The remaining entries, still in header/sequence pairs.
+    """
+    prefixes = tuple(f">{i}_" for i in isolates)
+    kept: list[str] = []
+    for header, sequence in zip(fasta_entries[::2], fasta_entries[1::2]):
+        if not header.startswith(prefixes):
+            kept += [header, sequence]
+    return kept
+
+
 def is_thl_sample_name(sample_name: str) -> bool:
-    """Check whether a sample name is a THL sample name (``YY-NNNNNN`` or ``YYYY-NNNN``).
+    """Check whether a sample name is a THL sample name.
+
+    ``YY-NNNNNN`` or ``YYYY-NNNN``, optionally ending in a suffix from
+    ``THL_SAMPLE_SUFFIXES`` (``2026-00418VI``).
 
     Args:
         sample_name: Sample name.
@@ -364,14 +404,24 @@ def _read_fasta_list(path: Path) -> list[str]:
     return [] if df.empty else df[0].astype(str).tolist()
 
 
-def _write_run_files(sample: Sample, fastas_to_submit: list[str], output_root: Path) -> None:
-    """Add the sample to the run's ``namelist``, ``submit_info`` and ``fastas`` files.
+def _write_run_files(sample: Sample, fastas_to_submit: list[str], output_root: Path,
+                     previous_name: str | None = None) -> None:
+    """Add or replace the sample in the run's ``namelist``, ``submit_info`` and ``fastas`` files.
+
+    a sample named again (``gisaid_naming_rerun.py``)
+    replaces its earlier rows. Before, ``submit_info.xlsx`` and
+    ``fastas.xlsx`` got a second copy on every rerun, so the GISAID upload
+    files had duplicate entries. Rows under ``previous_name`` (the name the
+    sample had before ``--force`` gave it a new number) are removed too.
 
     Args:
         sample: The named sample (``segments_to_submit()`` already called).
         fastas_to_submit: The sample's upload entries.
         output_root: The run's ``GISAIDfasta`` folder.
+        previous_name: The sample's GISAID name before this naming, if any.
     """
+    replaced = {isolate_name(n) for n in (sample.new_name, previous_name) if n}
+
     namelist_path = output_root / "namelist.xlsx"
     namelist_df = _read_run_table(namelist_path, NAMELIST_COLUMNS)
     new_row = pd.DataFrame([[sample.current_name, sample.new_name]], columns=NAMELIST_COLUMNS)
@@ -380,13 +430,14 @@ def _write_run_files(sample: Sample, fastas_to_submit: list[str], output_root: P
 
     submit_path = output_root / "submit_info.xlsx"
     submit_df = _read_run_table(submit_path, SUBMIT_COLUMNS, match_by_position=True)
+    submit_df = submit_df[~submit_df["Isolate_name"].isin(replaced)]   
     submit_df = pd.concat([submit_df, pd.DataFrame([sample.submitting_info], columns=SUBMIT_COLUMNS)],
                           ignore_index=True)
     submit_df["Subtype"] = submit_df["Subtype"].replace("H1N1pdm09", "H1N1")
     submit_df.to_excel(submit_path, index=False)
 
     fastas_path = output_root / "fastas.xlsx"
-    all_fastas = _read_fasta_list(fastas_path) + fastas_to_submit
+    all_fastas = _without_isolates(_read_fasta_list(fastas_path), replaced) + fastas_to_submit
     workbook = xlsxwriter.Workbook(str(fastas_path))
     worksheet = workbook.add_worksheet()
     for idx, item in enumerate(all_fastas):
@@ -446,12 +497,17 @@ def process_sample_folder(sample_path: Path,
                           excel_file: Path,
                           run_dir: Path,
                           running_override: str | None = None,
-                          force_reassign: bool = False) -> str | None:
+                          force_reassign: bool = False,
+                          rename_existing: bool = False) -> str | None:
     """GISAID-name one sample and write its submission files.
 
-    Non-THL sample names (controls, MinION barcodes) are skipped. The sample
-    keeps the running number it already has in the central list unless
-    ``force_reassign`` is set.
+    Non-THL sample names (controls, MinION barcodes) are skipped.
+
+     a sample that already has a GISAID name in the
+    central list is skipped too, so a re-sequenced sample is not submitted
+    again from a later run. ``rename_existing`` recreates its files under the
+    existing name and number; ``force_reassign`` or ``running_override`` give
+    it a new number.
 
     Args:
         sample_path: The sample's IRMA output folder (with ``amended_consensus``).
@@ -459,24 +515,27 @@ def process_sample_folder(sample_path: Path,
         run_dir: Results folder of the run; files go to ``<run_dir>/GISAIDfasta/``.
         running_override: Use this running number.
         force_reassign: Give a new running number even if the sample has one.
+        rename_existing: Name the sample even if it already has a GISAID name
+            (keeping its number unless ``force_reassign``).
 
     Returns:
         The GISAID name, or ``None`` if the sample was skipped (not a THL name,
-        no consensus, or missing HA or NA).
+        already named, no consensus, or missing HA or NA).
 
     Raises:
         RuntimeError: If the central list or a run file cannot be read or
             written. Nothing more is changed for the sample then.
     """
     if not is_thl_sample_name(sample_path.name):
-        logger.info("Not GISAID-naming %s: not a THL sample name (YY-NNNNNN).", sample_path.name)
+        logger.info("Not GISAID-naming %s: not a THL sample name (YY-NNNNNN, YYYY-NNNN, "
+                    "optionally ending in %s).", sample_path.name, "/".join(THL_SAMPLE_SUFFIXES))
         return None
 
     try:
         with _file_lock(excel_file):
             names_df = _load_names_df(excel_file)
             return _process_sample_locked(sample_path, names_df, excel_file, run_dir,
-                                          running_override, force_reassign)
+                                          running_override, force_reassign, rename_existing)
     except OSError as e:
         raise RuntimeError(f"GISAID naming files for {sample_path.name} could not be written: {e}") from e
 
@@ -486,7 +545,8 @@ def _process_sample_locked(sample_path: Path,
                            excel_file: Path,
                            run_dir: Path,
                            running_override: str | None,
-                           force_reassign: bool) -> str | None:
+                           force_reassign: bool,
+                           rename_existing: bool = False) -> str | None:
     """Do the work of ``process_sample_folder`` while its lock is held.
 
     Args:
@@ -496,11 +556,22 @@ def _process_sample_locked(sample_path: Path,
         run_dir: Results folder of the run.
         running_override: Use this running number.
         force_reassign: Give a new running number even if the sample has one.
+        rename_existing: Name the sample even if it already has a GISAID name.
 
     Returns:
         The GISAID name, or ``None`` if the sample was skipped.
     """
     sample_name = sample_path.name
+    # CHANGE (2026-10-23): the sample's current name decides whether it is
+    # skipped, and lets its old rows be replaced in the run files.
+    previous = names_df.loc[names_df["THL näytenimi"] == sample_name, "GISAID nimi"].dropna()
+    previous = previous[previous.astype(str).str.strip() != ""]
+    previous_name = str(previous.iloc[0]) if len(previous) else None
+    if previous_name and not (rename_existing or force_reassign or running_override):
+        logger.info("Not GISAID-naming %s: already named %s in the central list "
+                    "(gisaid_naming_rerun.py --sample %s recreates its files).",
+                    sample_name, previous_name, sample_name)
+        return None
     running_number = _running_number(names_df, sample_name, running_override, force_reassign)
     logger.info("Processing sample %s, running number %s", sample_name, running_number)
 
@@ -534,7 +605,7 @@ def _process_sample_locked(sample_path: Path,
     sample.get_segments()
     fastas_to_submit = sample.segments_to_submit()
     sample.dump_fasta(output_root)
-    _write_run_files(sample, fastas_to_submit, output_root)
+    _write_run_files(sample, fastas_to_submit, output_root, previous_name)
 
     names_df = _record_name(names_df, sample_name, running_number, sample.new_name)
     tmp_path = excel_file.with_suffix(excel_file.suffix + ".tmp")

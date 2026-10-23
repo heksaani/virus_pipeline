@@ -13,8 +13,10 @@ Examples::
     python gisaid_naming_rerun.py --run-dir /path/to/RESULTS_20261016 \
         --config /path/to/config.json --all
 
-A sample that already has a running number keeps it; ``--force`` gives it a
-new one. MinION samples (``barcode01``, ...) are never GISAID-named: ``--all``
+``--all`` skips samples that already have a GISAID name
+in the central list, so it only names the ones still missing a name.
+``--sample`` names the chosen sample even if it has a name, keeping its
+running number (e.g. to recreate its files); ``--force`` gives it a new one. MinION samples (``barcode01``, ...) are never GISAID-named: ``--all``
 skips them and ``--sample barcodeNN`` stops with an error, so barcode names
 never end up in the central name list.
 """
@@ -117,6 +119,7 @@ def main() -> None:
                 excel_file=gisaid_excel,
                 run_dir=run_dir,
                 force_reassign=args.force,
+                rename_existing=bool(args.sample),
             )
         except RuntimeError:
             logger.exception("GISAID-nimeäminen epäonnistui näytteelle %s", sample_name)
@@ -125,7 +128,7 @@ def main() -> None:
         if new_name:
             logger.info("-> %s : %s", sample_name, new_name)
         else:
-            logger.warning("-> %s : ohitettiin (puuttuu HA/NA tms.)", sample_name)
+            logger.warning("-> %s : ohitettiin (jo nimetty, puuttuu HA/NA tms.; syy yllä)", sample_name)
 
 
 if __name__ == "__main__":

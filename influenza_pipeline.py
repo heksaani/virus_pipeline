@@ -127,8 +127,8 @@ def run_flu_post_irma(sample: str, irma_results_dir: Path, run_dir: Path,
             if new_name:
                 logger.info("GISAID name for sample %s: %s", sample, new_name)
             else:
-                logger.warning("Sample %s was not GISAID-named (not a THL sample name, or missing HA/NA).",
-                               sample)
+                logger.warning("Sample %s was not GISAID-named (not a THL sample name, already named, "
+                               "or missing HA/NA; see the line above).", sample)
 
     nextclade_env = check_env("nextclade_conda_env", config)
     nextclade_ref = config.get("nextclade_ref")
