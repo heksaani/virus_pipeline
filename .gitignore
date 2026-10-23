@@ -1,4 +1,6 @@
-*xlsx
+*xlsx*
 results
 **__pycache__
 config.json
+*.log
+*.pid
