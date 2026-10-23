@@ -1,5 +1,4 @@
-"""CHANGE (2026-10-06): NEW. process_sample() archiving / done-marker rules,
-with the workflow handler replaced by a stub so no tools are needed.
+"""Script tests for run_pipeline.py, which is used to run the IRMA pipeline on a set of input files.
 """
 from argparse import Namespace
 from pathlib import Path
@@ -7,6 +6,7 @@ from pathlib import Path
 import pytest
 
 import run_pipeline
+from pre_irma import group_by_sample
 
 
 def _make_sample(input_dir: Path, species="influenza", seq="miseq", name="26-040001_S1"):
@@ -85,3 +85,39 @@ def test_undetermined_is_skipped(env, monkeypatch):
     run_pipeline.process_sample("Undetermined", files, run_dir, input_dir, config, args)
     assert calls == []
     assert all(f.exists() for f in files)
+
+
+def test_basespace_download_folder_is_archived_and_removed(env, monkeypatch):
+    """BaseSpace puts each sample in ``<sample>_L001-ds.<id>/``.
+
+    The sample name comes from the file name, not the folder, and the
+    emptied download folder is removed; the sequencer folder stays.
+    """
+    input_dir, run_dir, config, args, tmp = env
+    miseq = input_dir / "influenza" / "miseq"
+    download = miseq / "2026-00418VI_L001-ds.62d11019a0124daf989a947404652f18"
+    download.mkdir(parents=True)
+    files = []
+    for r in (1, 2):
+        f = download / f"2026-00418VI_S1_L001_R{r}_001.fastq.gz"
+        f.write_bytes(b"data")
+        files.append(f)
+
+    assert list(group_by_sample(files)) == ["2026-00418VI"]
+    _stub_handler(monkeypatch, True)
+    assert run_pipeline.process_sample("2026-00418VI", files, run_dir, input_dir, config, args)
+
+    assert (tmp / "archive" / run_dir.name / "2026-00418VI" / files[0].name).exists()
+    assert not download.exists()
+    assert miseq.is_dir()
+
+
+@pytest.mark.parametrize("folder, sample, expected", [
+    ("26-040001", "26-040001", True),                   # plain sample folder
+    ("26-040001_L001-ds.abc123", "26-040001", True),    # BaseSpace download folder
+    ("barcode01", "barcode01", True),                   # MinION barcode
+    ("26-040001_L001-ds.abc123", "26-04000", False),    # other sample's prefix
+    ("BaseCalls", "26-040001", False),                  # shared run folder
+])
+def test_is_sample_folder(folder, sample, expected):
+    assert run_pipeline.is_sample_folder(Path(folder), sample) is expected

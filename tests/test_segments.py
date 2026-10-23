@@ -1,4 +1,4 @@
-"""CHANGE (2026-10-06): NEW. Tests for segments.py (IRMA filename parsing)."""
+"""Script tests for segments.py, which is used to identify influenza segments from IRMA output files."""
 from pathlib import Path
 
 import pytest

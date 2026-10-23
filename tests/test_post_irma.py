@@ -1,4 +1,4 @@
-"""CHANGE (2026-10-06): NEW. Post-IRMA parsing on IRMA-shaped output."""
+"""Some tests for post_irma.py, which is used to process IRMA results after the main pipeline run."""
 from pathlib import Path
 
 import pandas as pd

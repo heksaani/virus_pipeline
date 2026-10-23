@@ -1,4 +1,4 @@
-"""CHANGE (2026-10-06): NEW. Tests for read pairing and sample grouping."""
+"""Script tests for pre_irma.py, which is used to process input files before the main IRMA pipeline run."""
 from pathlib import Path
 
 import pytest
@@ -52,7 +52,6 @@ def test_species_and_seq_type_for_miseq_run_folder(tmp_path: Path):
     assert get_species_and_seq_type([str(f)], tmp_path) == ("FLU", "miseq")
 
 
-# CHANGE (2026-10-06): MinION helpers
 def test_combine_fastqs_mixes_gzip_and_plain(tmp_path: Path):
     import gzip
 
